@@ -5,7 +5,7 @@ import { JWT_TOKEN } from "@repo/backend-common/config";
 declare global {
   namespace Express {
     interface Request {
-      userId?: string;
+      userId: string;
     }
   }
 }

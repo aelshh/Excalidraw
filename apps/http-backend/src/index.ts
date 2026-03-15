@@ -26,6 +26,7 @@ app.post("/signup", async (req: Request, res: Response) => {
     const user = await prismaClient.user.create({
       data: {
         email: parsedData.data.username,
+        // Todo: Hash the password
         password: parsedData.data.password,
         name: parsedData.data.name,
       },
@@ -33,7 +34,7 @@ app.post("/signup", async (req: Request, res: Response) => {
 
     res.status(200).json({
       message: "Signed Up successfully",
-      userid: user.id,
+      userId: user.id,
     });
   } catch (e) {
     console.log(e);
@@ -44,32 +45,61 @@ app.post("/signup", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/signin", (req: Request, res: Response) => {
-  const data = SigninSchema.safeParse(req.body);
-  if (!data.success) {
+app.post("/signin", async (req: Request, res: Response) => {
+  const parsedData = SigninSchema.safeParse(req.body);
+  if (!parsedData.success) {
     res.json({
       message: "Invalid inputs",
-      error: data.error,
+      error: parsedData.error,
     });
     return;
   }
-  const userId = 1;
-  const token = jwt.sign({ userId }, JWT_TOKEN);
-});
 
-app.post("/room", authMiddleware, (req: Request, res: Response) => {
-  const data = CreateRoomSchema.safeParse(req.body);
-  if (!data.success) {
-    res.json({
-      message: "Invalid Inputs",
-      error: data.error,
+  const user = await prismaClient.user.findUnique({
+    where: {
+      email: parsedData.data.username,
+      //Todo: compare hashed password
+      password: parsedData.data.password,
+    },
+  });
+
+  if (!user) {
+    res.status(403).json({
+      message: "Email or password Invalid",
     });
-    return;
   }
-  //db call
+
+  const token = jwt.sign({ userId: user?.id }, JWT_TOKEN);
   res.json({
-    roomID: 311,
+    token,
   });
 });
 
-app.listen(3001);
+app.post("/room", authMiddleware, async (req: Request, res: Response) => {
+  const parsedData = CreateRoomSchema.safeParse(req.body);
+  if (!parsedData.success) {
+    res.json({
+      message: "Invalid Inputs",
+      error: parsedData.error,
+    });
+    return;
+  }
+
+  try {
+    const room = await prismaClient.room.create({
+      data: {
+        slug: parsedData.data.name,
+        adminId: req.userId,
+      },
+    });
+    res.json({
+      roomID: room.id,
+    });
+  } catch (e) {
+    return res.status(411).json({
+      message: "Room already exists with that name",
+    });
+  }
+});
+
+app.listen(3001, () => console.log("Server is running port port 3001"));
