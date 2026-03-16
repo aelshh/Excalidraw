@@ -14,7 +14,7 @@ app.use(express.json());
 app.post("/signup", async (req: Request, res: Response) => {
   const parsedData = CreateUserSchema.safeParse(req.body);
   if (!parsedData.success) {
-    res.json({
+    res.status(400).json({
       message: "Invalid Inputs",
       error: parsedData.error.message,
     });
@@ -48,7 +48,7 @@ app.post("/signup", async (req: Request, res: Response) => {
 app.post("/signin", async (req: Request, res: Response) => {
   const parsedData = SigninSchema.safeParse(req.body);
   if (!parsedData.success) {
-    res.json({
+    res.status(400).json({
       message: "Invalid inputs",
       error: parsedData.error,
     });
@@ -78,7 +78,7 @@ app.post("/signin", async (req: Request, res: Response) => {
 app.post("/room", authMiddleware, async (req: Request, res: Response) => {
   const parsedData = CreateRoomSchema.safeParse(req.body);
   if (!parsedData.success) {
-    res.json({
+    res.status(400).json({
       message: "Invalid Inputs",
       error: parsedData.error,
     });
@@ -120,4 +120,23 @@ app.get("/room/:roomId", async (req: Request, res: Response) => {
   });
 });
 
+app.get("/room/:slug", async (req: Request, res: Response) => {
+  let slug = req.params.slug;
+
+  if (Array.isArray(slug)) {
+    slug = slug[0];
+  }
+
+  if (typeof slug !== "string") {
+    res.status(400).json({
+      message: "Invalid slug format",
+    });
+  }
+
+  const room = await prismaClient.room.findFirst({
+    where: {
+      slug,
+    },
+  });
+});
 app.listen(3001, () => console.log("Server is running port port 3001"));
